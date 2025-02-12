@@ -3,6 +3,7 @@ from tkinter import *
 from tkinter import ttk
 from random import choice,randint,shuffle
 import pyperclip
+import json
 
 # ---------------------------- PASSWORD GENERATOR ------------------------------- #
 
@@ -32,19 +33,55 @@ def save():
     web_text = web_entry.get()
     email_text=email_entry.get()
     password_text=password_entry.get()
+    new_data = {
+        web_text: {
+            "email": email_text,
+            "password": password_text
+        }
+    }
 
     if len(web_text)==0 or len(email_text)==0 or len(password_text)==0:
         messagebox.showwarning(title="Oops", message="Empty Entry!\nPlease fill all the info correctly.")
     else:
-        is_ok=messagebox.askokcancel(title=web_text, message=f"These are the details entered: \nEmail:  {email_text}\nPassword:  {password_text}\n\nDo you want to save it?")
+        try:
+            with open("data.json", "r") as data_file:
+                # Reading the old data
+                data = json.load(data_file)
 
-        if is_ok:
-            with open("data.txt", "a") as file:
-                file.write(f"'{web_text}' | '{email_text}' | '{password_text}'\n")
-            web_entry.delete(0,END)
-            email_entry.delete(0,END)
-            password_entry.delete(0,END)
+        except FileNotFoundError:
+            data = new_data
 
+        except json.JSONDecodeError:
+            data = new_data
+
+        else:
+            # Updating old data with new data
+            data.update(new_data)
+        with open("data.json", "w") as data_file:
+            # Saving the new data
+            json.dump(data, data_file, indent = 4)
+
+        web_entry.delete(0,END)
+        email_entry.delete(0,END)
+        password_entry.delete(0,END)
+
+# ------------------------------- FIND PASSWORD ------------------------------- #
+
+def find_password():
+    web_text = web_entry.get()
+    email_text = email_entry.get()
+    try:
+        with open("data.json","r") as data_file:
+            data = json.load(data_file)
+    except FileNotFoundError:
+        messagebox.showwarning(title="Error!", message="No Data File Found.")
+    else:
+        if web_text in data:
+            email = data[web_text]["email"]
+            password = data[web_text]["password"]
+            messagebox.showinfo(title=web_text, message =f"Email:  {email}\nPassword:  {password}")
+        else:
+            messagebox.showwarning(title="Error!", message = f"No details for {web_text} exists.")
 
 # ---------------------------- UI SETUP ------------------------------- #
 
@@ -61,8 +98,11 @@ website_label= ttk.Label(text= "Website:")
 website_label.grid(row=1,column=0,pady=5,sticky="W")
 
 web_entry= ttk.Entry()
-web_entry.grid(row=1,column=1,columnspan=2,sticky="EW")
+web_entry.grid(row=1,column=1,sticky="EW")
 web_entry.focus()
+
+search_button = ttk.Button(text="Search", command=find_password)
+search_button.grid(row=1,column=2,sticky="EW")
 
 email_label= ttk.Label(text= "Email/Username:")
 email_label.grid(row=2,column=0,padx=(0,20),pady=5,sticky="W")
